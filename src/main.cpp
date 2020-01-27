@@ -45,6 +45,7 @@
 #include <sailfishapp.h>
 
 #include <iostream>
+#include <string.h>
 
 #include "appsettings.h"
 #include "dbuscontainerstate.h"
@@ -68,11 +69,6 @@ QString getFreeWaylandSocket()
 
 int main(int argc, char *argv[])
 {
-    QScopedPointer<QGuiApplication> app(SailfishApp::application(argc, argv));
-    app->setApplicationName("flatpak-runner");
-    app->setOrganizationName("flatpak-runner");
-    app->setApplicationVersion(APP_VERSION);
-
     QStringList posopt;
     for (int i=1; i<argc; ++i)
       posopt.append(argv[i]);
@@ -117,6 +113,25 @@ int main(int argc, char *argv[])
     else
       std::cout << "Starting empty Wayland server and enabling settings\n";
 
+    // create filtered arguments
+    int sfos_argc = 1;
+    char **sfos_argv = nullptr;
+    if (program.isEmpty()) {
+        sfos_argc = argc;
+        sfos_argv = argv;
+    } else {
+        sfos_argc = 1;
+        sfos_argv = (char**)malloc(sizeof(char*)*1);
+        std::string s = program.toStdString();
+        sfos_argv[0] = (char*)malloc(strlen(s.c_str()) + 1);
+        strcpy(sfos_argv[0], s.c_str());
+    }
+    std::cout << "Starting as: " << sfos_argv[0] << "\n";
+    QScopedPointer<QGuiApplication> app(SailfishApp::application(sfos_argc, sfos_argv));
+    app->setApplicationName("flatpak-runner");
+    app->setOrganizationName("flatpak-runner");
+    app->setApplicationVersion(APP_VERSION);
+
     QScopedPointer<QQuickView> view(SailfishApp::createView());
 
     // compositor
@@ -152,7 +167,8 @@ int main(int argc, char *argv[])
     view->rootContext()->setContextProperty("modeSettings", !run);
     view->rootContext()->setContextProperty("programVersion", APP_VERSION);
 
-    view->setSource(SailfishApp::pathTo("qml/main.qml"));
+    //view->setSource(SailfishApp::pathTo("qml/main.qml"));
+    view->setSource(QUrl("file:///usr/share/flatpak-runner/qml/main.qml"));
     view->create();
     QObject *firstPage = view->rootObject()->findChild<QObject*>("mainPage");
     QObject::connect(&compositor, SIGNAL(windowAdded(QVariant)), firstPage, SLOT(windowAdded(QVariant)));
